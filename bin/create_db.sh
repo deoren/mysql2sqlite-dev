@@ -7,6 +7,10 @@
 #
 #   Run primary script to generate output SQLite db file for testing
 
+# What base directory is all of this work being performed in?
+# e.g., '/tmp', '$HOME/mysql2sqlite' or another path.
+BASE_DIR_PATH="/tmp"
+
 #MAIN_PROJECT_GIT_REPO_URL="https://github.com/deoren/mysql2sqlite"
 #MAIN_PROJECT_GIT_REPO_URL="https://github.com/WhyAskWhy/mysql2sqlite"
 MAIN_PROJECT_GIT_REPO_URL="http://local-mirror:3000/mirror/mysql2sqlite"
@@ -19,17 +23,21 @@ THIS_DEV_ENV_GIT_REPO_URL="http://local-mirror:3000/mirror/mysql2sqlite-dev"
 THIS_DEV_ENV_GIT_REPO_BASENAME="$(basename ${THIS_DEV_ENV_GIT_REPO_URL})"
 THIS_DEV_ENV_GIT_REPO_BRANCH="master"
 
+# Reference main repo working directory in order to allow importing the
+# custom modules from that path.
+PYTHONPATH="$PYTHONPATH:${BASE_DIR_PATH}/${THIS_DEV_ENV_GIT_REPO_BASENAME}"
+
 general_config_file="mysql2sqlite_general.ini"
 query_config_file="mysql2sqlite_queries.ini"
 
 # Get updated repo contents
-if [[ ! -d /tmp/${MAIN_PROJECT_GIT_REPO_BASENAME} ]]; then
+if [[ ! -d ${BASE_DIR_PATH}/${MAIN_PROJECT_GIT_REPO_BASENAME} ]]; then
     cd /tmp
     git clone ${MAIN_PROJECT_GIT_REPO_URL}
     cd ${MAIN_PROJECT_GIT_REPO_BASENAME}
     git checkout ${MAIN_PROJECT_GIT_REPO_BRANCH}
 else
-    cd /tmp/${MAIN_PROJECT_GIT_REPO_BASENAME}
+    cd ${BASE_DIR_PATH}/${MAIN_PROJECT_GIT_REPO_BASENAME}
     git reset HEAD --hard
     git checkout ${MAIN_PROJECT_GIT_REPO_BRANCH}
     git pull --ff-only
@@ -39,7 +47,7 @@ fi
 if ! python3 -c "import mysql.connector"
 then
     # Looks like we're missing some modules: install them
-    pip3 install -r /tmp/${MAIN_PROJECT_GIT_REPO_BASENAME}/requirements.txt --user
+    pip3 install -r ${BASE_DIR_PATH}/${MAIN_PROJECT_GIT_REPO_BASENAME}/requirements.txt --user
 fi
 
 # Go ahead and pre-create the output dir for SQLite database
@@ -69,7 +77,7 @@ else
     echo "SKIPPED: Command-line config files dir path not provided"
 fi
 
-CONFIG_FILE_DIRS+=("/tmp/${MAIN_PROJECT_GIT_REPO_BASENAME}")
+CONFIG_FILE_DIRS+=("${BASE_DIR_PATH}/${MAIN_PROJECT_GIT_REPO_BASENAME}")
 CONFIG_FILE_DIRS+=("$HOME/.config/mysql2sqlite")
 CONFIG_FILE_DIRS+=("/etc/mysql2sqlite")
 
@@ -90,12 +98,12 @@ done
 if [[ "${config_files_found}" == "false" ]]; then
     echo "Exiting config files not found. Deploying template config files ..."
     cp -v \
-        /tmp/${MAIN_PROJECT_GIT_REPO_BASENAME}/mysql2sqlite_general.ini.tmpl \
-        /tmp/${MAIN_PROJECT_GIT_REPO_BASENAME}/mysql2sqlite_general.ini
+        ${BASE_DIR_PATH}/${MAIN_PROJECT_GIT_REPO_BASENAME}/mysql2sqlite_general.ini.tmpl \
+        ${BASE_DIR_PATH}/${MAIN_PROJECT_GIT_REPO_BASENAME}/mysql2sqlite_general.ini
 
     cp -v \
-        /tmp/${MAIN_PROJECT_GIT_REPO_BASENAME}/mysql2sqlite_queries.ini.tmpl \
-        /tmp/${MAIN_PROJECT_GIT_REPO_BASENAME}/mysql2sqlite_queries.ini
+        ${BASE_DIR_PATH}/${MAIN_PROJECT_GIT_REPO_BASENAME}/mysql2sqlite_queries.ini.tmpl \
+        ${BASE_DIR_PATH}/${MAIN_PROJECT_GIT_REPO_BASENAME}/mysql2sqlite_queries.ini
 else
     echo "Configuration files found in ${config_files_path}. Using those files."
 fi
@@ -104,12 +112,12 @@ fi
 # TODO: What command-line options are needed?
 #   - path to main config file?
 #   - path to output db file?
-python3 /tmp/${MAIN_PROJECT_GIT_REPO_BASENAME}/mysql2sqlite.py \
+python3 ${BASE_DIR_PATH}/${MAIN_PROJECT_GIT_REPO_BASENAME}/mysql2sqlite.py \
     --config_file_dir "${cmdline_dir_value}"
 
 if [[ $? -eq 0 ]]; then
     echo "Successfully generated SQLite db file."
-    echo "Run python3 /tmp/${THIS_DEV_ENV_GIT_REPO_BASENAME}/bin/validate_dbs.py next to confirm db was created properly."
+    echo "Run python3 ${BASE_DIR_PATH}/${THIS_DEV_ENV_GIT_REPO_BASENAME}/bin/validate_dbs.py next to confirm db was created properly."
 else
     echo "FAILURE to generate SQLite db file!"
     exit 1
